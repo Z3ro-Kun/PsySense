@@ -1,0 +1,15 @@
+# --- Phase 2: Identity subsystem ---
+pydantic>=2.6
+numpy>=1.26
+opencv-python>=4.9
+insightface>=0.7.3
+onnxruntime>=1.17          # CPU inference backend for insightface
+faiss-cpu>=1.8             # optional: system falls back to linear scan if unavailable
+pytest>=8.0
+pyyaml>=6.0
+
+# --- carried over from the original project (later phases) ---
+# ultralytics
+# fastapi
+# uvicorn
+# mediapipe

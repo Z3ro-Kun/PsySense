@@ -1,0 +1,81 @@
+# PsySense configuration
+# All tunable constants live here — no hardcoded values in source files.
+
+identity:
+  embedder:
+    model_name: "buffalo_l"       # InsightFace model pack
+    ctx_id: -1                    # -1 = CPU, 0+ = GPU device index (auto CPU fallback on failure)
+    det_size: [320, 320]
+
+  quality:
+    blur_threshold: 60.0          # min variance-of-Laplacian to accept
+    brightness_min: 40.0
+    brightness_max: 220.0
+    max_yaw_deg: 35.0
+    max_occlusion: 0.35
+    min_face_size_px: 60
+
+  matching:
+    match_distance_threshold: 0.42     # cosine distance ceiling for a positive match
+    duplicate_distance_threshold: 0.08 # below this = duplicate enrollment image, skipped
+    max_embeddings_per_student: 20
+
+  cache:
+    ttl_seconds: 30.0
+    reverify_every_n_frames: 150
+
+  vector_index:
+    backend: "auto"                # "auto" | "faiss" | "linear"
+    dim: 512
+    persist_path: "data/faiss_index/students.index"
+
+# --------------------------------------------------------------------- #
+# Phase 4: inference pipeline
+# --------------------------------------------------------------------- #
+
+pipeline:
+  camera:
+    source: 0                      # int index for webcam, or a file path
+    camera_id: "classroom_cam_1"
+    reconnect_delay_seconds: 3.0
+    max_consecutive_read_failures: 30   # give up and alert after this many failed reads in a row
+
+  detection:
+    yolo_weights: "yolov8n.pt"
+    person_class_id: 0
+    conf_threshold: 0.25
+
+  tracker:
+    kind: "bytetrack"               # "bytetrack" | "strongsort" -- see benchmarks/bench_tracker.py
+    bytetrack:
+      track_thresh: 0.5
+      match_thresh: 0.8
+      track_buffer: 30
+      frame_rate: 30
+    strongsort:
+      reid_weights: "osnet_x0_25_msmt17.pt"
+      device: "cpu"
+      half: false
+
+  frequencies:
+    # Each stage runs at its own cadence rather than every frame, per the
+    # "independent frequencies" requirement. Values are seconds between
+    # runs *per tracked person*, except detection/tracking which run
+    # every frame by design (they're cheap; see bench_tracker.py).
+    identity_resolve_interval_sec: 1.0
+    emotion_interval_sec: 2.0
+    pose_interval_sec: 0.5
+    fusion_flush_interval_sec: 10.0
+    cache_sweep_interval_sec: 5.0
+    pose_history_cleanup_interval_sec: 60.0
+
+  services:
+    emotion_url: "http://localhost:8000/analyze_emotion/"
+    pose_url: "http://localhost:8001/analyze_pose/"
+    request_timeout_sec: 1.5
+
+  database:
+    path: "data/psysense.db"
+
+  display:
+    headless: false                 # debug overlay window; set true for background/server deployment

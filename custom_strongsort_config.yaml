@@ -1,0 +1,44 @@
+ema_alpha:
+  default: 0.9
+  range:
+  - 0.7
+  - 0.95
+  type: uniform
+max_age: 150
+max_cos_dist:
+  default: 0.4
+  range:
+  - 0.1
+  - 0.4
+  type: uniform
+max_dist: 0.4
+max_iou_dist:
+  default: 0.7
+  range:
+  - 0.5
+  - 0.95
+  type: uniform
+max_iou_distance: 0.9
+mc_lambda:
+  default: 0.98
+  range:
+  - 0.9
+  - 0.999
+  type: uniform
+min_conf:
+  default: 0.6
+  range:
+  - 0.2
+  - 0.8
+  type: uniform
+n_init:
+  default: 3
+  range:
+  - 1
+  - 4
+  type: randint
+nn_budget:
+  default: 100
+  options:
+  - 100
+  type: choice

@@ -1,0 +1,38 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# --- Virtual environments ---
+.venv/
+main_env/
+deepface_env/
+mediapipe_env/
+
+# --- Secrets ---
+.env
+*.env.local
+
+# --- Runtime data (never commit generated/user data) ---
+psysense/data/
+*.db
+*.db-shm
+*.db-wal
+psysense/data/faiss_index/
+*.index
+*.index.meta
+
+# --- Model weights (tracked separately / documented in README, not committed here) ---
+*.pt
+*.onnx
+*.task
+
+# --- IDE ---
+.idea/
+
+# --- Frontend ---
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/

@@ -1,0 +1,36 @@
+.photo-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.photo-dropzone-active {
+  border-color: var(--series-blue);
+  background: var(--page);
+}
+
+.photo-dropzone-file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.photo-dropzone-file-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--grid);
+}
+
+.photo-dropzone-file-list button {
+  background: none;
+  border: none;
+  color: var(--status-critical);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}

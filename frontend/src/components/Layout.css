@@ -1,0 +1,60 @@
+.layout-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 24px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.layout-brand {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.layout-nav {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+}
+
+.layout-nav a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+}
+
+.layout-nav a.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--series-blue);
+}
+
+.layout-logout {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.layout-logout:hover {
+  color: var(--text-primary);
+}
+
+.layout-main {
+  flex: 1;
+  padding: 24px;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}

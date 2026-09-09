@@ -1,0 +1,103 @@
+.linechart-root {
+  position: relative;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.linechart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.linechart-grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+
+.linechart-baseline {
+  stroke: var(--axis);
+  stroke-width: 1;
+}
+
+.linechart-axis-label {
+  fill: var(--text-muted);
+  font-size: 10px;
+}
+
+.linechart-line {
+  fill: none;
+  stroke-width: 2;
+}
+
+.linechart-crosshair {
+  stroke: var(--axis);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.linechart-tooltip {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  min-width: 140px;
+}
+
+.linechart-tooltip-time {
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.linechart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: space-between;
+}
+
+.linechart-tooltip-label {
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.linechart-tooltip-value {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.linechart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 6px 4px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.linechart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.linechart-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+  flex-shrink: 0;
+}

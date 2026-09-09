@@ -1,0 +1,21 @@
+.daterange-filter {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.daterange-option {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.daterange-option-active {
+  border-color: var(--series-blue);
+  color: var(--text-primary);
+  font-weight: 600;
+}

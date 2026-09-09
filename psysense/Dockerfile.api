@@ -1,0 +1,30 @@
+# Dockerfile.api -- bridge_api backend only. Build/run from the psysense/
+# directory (the same import root main.py already uses):
+#
+#   docker build -f Dockerfile.api -t psysense-api .
+#   docker run --env-file ../.env -p 8080:8080 -v psysense-data:/app/data psysense-api
+#
+# The camera pipeline (main.py) is NOT containerized here -- it needs
+# direct access to a camera device, which is host-specific. See README
+# "Deployment topology" for why bridge_api and main.py are expected to
+# run on the same host and share the same data/ directory (a bind mount
+# or the same host filesystem path), not two separate containers with
+# no shared volume.
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# System deps for opencv-python (headless import still needs libGL/glib).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# ADMIN_USERNAME / ADMIN_PASSWORD_HASH / JWT_SECRET must be supplied at
+# runtime (--env-file or -e) -- api/auth.py refuses to start without them.
+EXPOSE 8080
+CMD ["uvicorn", "api.asgi:app", "--host", "0.0.0.0", "--port", "8080"]

@@ -1,0 +1,27 @@
+# Environment: main_env
+# Runs: main.py (camera pipeline) and, going forward, the bridge_api backend
+# (both need the same core/db/services import surface).
+
+# --- Identity subsystem ---
+pydantic>=2.6
+numpy>=1.26
+opencv-python>=4.9
+insightface>=0.7.3
+onnxruntime>=1.17          # CPU inference backend for insightface
+faiss-cpu>=1.8             # optional: system falls back to linear scan if unavailable
+pytest>=8.0
+pyyaml>=6.0
+
+# --- Pipeline (detection, tracking, HTTP calls to deepface/mediapipe servers) ---
+ultralytics>=8.1           # YOLO person detection
+boxmot>=10.0                # ByteTrack / StrongSort tracking backends
+requests>=2.31
+
+# --- bridge_api backend ---
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9    # required by FastAPI for multipart/form-data (image uploads)
+pyjwt>=2.8
+bcrypt>=4.0                 # used directly, not via passlib (see api/auth.py docstring)
+python-dotenv>=1.0          # loads .env in api/asgi.py -- see that file's docstring
+httpx>=0.27                 # FastAPI TestClient dependency (tests only)

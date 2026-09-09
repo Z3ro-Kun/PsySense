@@ -1,0 +1,12 @@
+# Environment: deepface_env
+# Runs: deepface_server.py (emotion analysis HTTP service, port 8000)
+#
+# Kept in a separate venv from main_env/mediapipe_env because deepface's
+# TensorFlow dependency chain has historically conflicted with the
+# torch/onnxruntime stack the main pipeline and mediapipe_env need.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+deepface>=0.0.93
+opencv-python>=4.9
+numpy>=1.26

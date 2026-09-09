@@ -59,7 +59,17 @@ class HeuristicQualityAssessor(QualityAssessor):
         if face_size_px < self.min_face_size_px:
             reasons.append(QualityRejectReason.TOO_SMALL)
 
-        gray = cv2.cvtColor(face_bgr, cv2.COLOR_BGR2GRAY)
+        # Blur/brightness must reflect the FACE region specifically, not
+        # whatever larger image the caller passed in as face_bgr -- e.g.
+        # main.py's resolve() path used to pass the full YOLO person-crop
+        # here, which made these checks measure clothing/background/body
+        # lighting instead of face sharpness and illumination, and could
+        # disagree with enrollment-time assessment of the same person
+        # under the same real-world conditions. face_box is authoritative
+        # (either a genuinely detected face box, or -- when no face was
+        # separately localized -- the full input as a fallback).
+        face_only = self._crop_to_box(face_bgr, face_box)
+        gray = cv2.cvtColor(face_only, cv2.COLOR_BGR2GRAY)
 
         blur_score = float(cv2.Laplacian(gray, cv2.CV_64F).var())
         if blur_score < self.blur_threshold:
@@ -87,6 +97,17 @@ class HeuristicQualityAssessor(QualityAssessor):
             face_size_px=face_size_px,
             reasons=reasons,
         )
+
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def _crop_to_box(image: np.ndarray, box: tuple[int, int, int, int]) -> np.ndarray:
+        h, w = image.shape[:2]
+        x1, y1, x2, y2 = box
+        x1, y1 = max(0, int(x1)), max(0, int(y1))
+        x2, y2 = min(w, int(x2)), min(h, int(y2))
+        if x2 <= x1 or y2 <= y1:
+            return image  # degenerate/out-of-bounds box -- fall back to the full input rather than crash
+        return image[y1:y2, x1:x2]
 
     # ------------------------------------------------------------------ #
     @staticmethod

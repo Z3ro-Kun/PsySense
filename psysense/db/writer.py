@@ -128,6 +128,26 @@ class AsyncDBWriter:
             raise DatabaseWriteError(job.result_holder["error"])
         return job.result_holder.get("rowid")
 
+    def barrier(self, timeout: float = 2.0) -> None:
+        """Blocks until every job enqueued before this call has been
+        processed by the writer thread. Since jobs are drained from the
+        queue strictly in order by a single thread, once the barrier job
+        itself completes, everything enqueued earlier has already been
+        committed.
+
+        For read-after-write consistency without switching every write to
+        the blocking execute_returning_id() path -- e.g. bridge_api's
+        enrollment endpoint enqueues several fire-and-forget writes via
+        Repository, then calls this once before returning 201, so a
+        client's immediate follow-up GET reliably sees the new student."""
+        job = _WriteJob(sql="SELECT 1", params=(), result_event=threading.Event())
+        try:
+            self._queue.put(job, timeout=timeout)
+        except queue.Full as exc:
+            raise DatabaseWriteError("DB write queue full") from exc
+        if not job.result_event.wait(timeout=timeout):
+            raise DatabaseWriteError("Barrier timed out waiting for writer thread")
+
     @property
     def dropped_jobs(self) -> int:
         return self._dropped_jobs

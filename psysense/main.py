@@ -21,12 +21,14 @@ Run:
 from __future__ import annotations
 
 import base64
+import logging
 import signal
 import sys
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -121,6 +123,9 @@ class PsySensePipeline:
             duplicate_distance_threshold=config.identity.matching.duplicate_distance_threshold,
             max_embeddings_per_student=config.identity.matching.max_embeddings_per_student,
             repository=self._repository,
+            auto_update_enabled=config.identity.auto_update.enabled,
+            auto_update_distance_threshold=config.identity.auto_update.distance_threshold,
+            auto_update_min_seconds_between_candidates=config.identity.auto_update.min_seconds_between_candidates_per_student,
         )
         self._identity.load_from_repository()
 
@@ -136,6 +141,8 @@ class PsySensePipeline:
         self._fusion = FusionEngine(window_seconds=config.pipeline.frequencies.fusion_flush_interval_sec)
 
         self._last_cache_sweep = time.time()
+        self._last_identity_refresh = time.time()
+        self._last_candidate_cleanup = time.time()
         self._cap: Optional[cv2.VideoCapture] = None
 
     # ------------------------------------------------------------------ #
@@ -274,7 +281,7 @@ class PsySensePipeline:
     # ------------------------------------------------------------------ #
     def _resolve_identity(self, state: TrackState, person_crop: np.ndarray, box: tuple[int, int, int, int]) -> None:
         try:
-            result = self._identity.resolve(state.tracker_id, person_crop, box)
+            result = self._identity.resolve(state.tracker_id, person_crop, box, session_id=state.session_id)
         except Exception as exc:  # noqa: BLE001
             logger.error(f"Identity resolution failed for tracker {state.tracker_id}: {exc}")
             return
@@ -369,6 +376,24 @@ class PsySensePipeline:
                 logger.info(f"Active identity cache swept {evicted} expired entries")
             self._last_cache_sweep = now
 
+        if now - self._last_identity_refresh >= freqs.identity_refresh_interval_sec:
+            try:
+                added = self._identity.refresh_from_repository()
+                if added:
+                    logger.info(f"Identity refresh picked up {added} new embedding(s) from another process")
+            except Exception as exc:  # noqa: BLE001
+                logger.error(f"Identity refresh failed: {exc}")
+            self._last_identity_refresh = now
+
+        auto_update_cfg = self.config.identity.auto_update
+        if now - self._last_candidate_cleanup >= auto_update_cfg.cleanup_interval_sec:
+            try:
+                cutoff = datetime.now(timezone.utc) - timedelta(days=auto_update_cfg.pending_retention_days)
+                self._repository.delete_stale_pending_candidates(cutoff)
+            except Exception as exc:  # noqa: BLE001
+                logger.error(f"Pending identity candidate cleanup failed: {exc}")
+            self._last_candidate_cleanup = now
+
     def _persist_fusion_event(self, event) -> None:
         if event.emotions:
             self._repository.insert_emotion_event(event.session_id, event.student_id, event.emotions)
@@ -451,6 +476,15 @@ class PsySensePipeline:
 
 def main() -> None:
     config = load_config()
+    # configure_root_logging() (triggered by the get_logger() calls at the
+    # top of this and other modules, at IMPORT time) is idempotent and
+    # already ran with its INFO default before we get here -- setting the
+    # level via that function again would be a no-op. Set it directly on
+    # the already-configured root logger instead, now that config.yaml's
+    # value is available.
+    level_name = config.logging.level.upper()
+    logging.getLogger("psysense").setLevel(getattr(logging, level_name, logging.INFO))
+
     pipeline = PsySensePipeline(config)
     pipeline.run()
 

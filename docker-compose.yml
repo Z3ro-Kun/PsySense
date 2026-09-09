@@ -1,0 +1,23 @@
+# docker-compose.yml -- bridge_api only.
+#
+# The camera pipeline (psysense/main.py) and the two inference services
+# (deepface_server.py, mediapipe_server.py) are NOT included here: they
+# need direct camera/device access and their own conflicting-dependency
+# venvs (see psysense/README section on the three venvs), which doesn't
+# map cleanly onto a single docker-compose service definition without
+# more host-specific plumbing than this repo currently needs. Run those
+# with the existing venvs (see README) on the same machine as this
+# container; bridge_api reads/writes the same data/ directory via the
+# bind mount below.
+services:
+  bridge_api:
+    build:
+      context: ./psysense
+      dockerfile: Dockerfile.api
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./psysense/data:/app/data
+    restart: unless-stopped

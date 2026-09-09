@@ -1,6 +1,14 @@
 # PsySense configuration
 # All tunable constants live here — no hardcoded values in source files.
 
+logging:
+  # Set to "DEBUG" temporarily to see per-attempt identity-resolution
+  # diagnostics (quality-gate rejection reasons, match distance vs.
+  # threshold, index size) in main.py's logs -- see services/identity/
+  # manager.py's resolve(). Noisy at DEBUG (one line per tracked person
+  # per identity_resolve_interval_sec), so leave at INFO normally.
+  level: "INFO"
+
 identity:
   embedder:
     model_name: "buffalo_l"       # InsightFace model pack
@@ -28,6 +36,18 @@ identity:
     backend: "auto"                # "auto" | "faiss" | "linear"
     dim: 512
     persist_path: "data/faiss_index/students.index"
+
+  auto_update:
+    # Human-in-the-loop profile enrichment: a resolve() match this
+    # confident gets queued for an admin to review (see dashboard's
+    # "Review" page) and explicitly approve/reject -- NEVER added to a
+    # profile automatically. distance_threshold is intentionally much
+    # stricter than matching.match_distance_threshold above.
+    enabled: true
+    distance_threshold: 0.20
+    min_seconds_between_candidates_per_student: 3600.0  # rate limit: at most 1 pending candidate/student/hour
+    pending_retention_days: 7.0                          # unreviewed candidates auto-delete after this long
+    cleanup_interval_sec: 3600.0
 
 # --------------------------------------------------------------------- #
 # Phase 4: inference pipeline
@@ -68,6 +88,9 @@ pipeline:
     fusion_flush_interval_sec: 10.0
     cache_sweep_interval_sec: 5.0
     pose_history_cleanup_interval_sec: 60.0
+    # How often to pick up students/embeddings enrolled by another process
+    # (e.g. via the bridge_api dashboard) while this pipeline is running.
+    identity_refresh_interval_sec: 30.0
 
   services:
     emotion_url: "http://localhost:8000/analyze_emotion/"
@@ -79,3 +102,23 @@ pipeline:
 
   display:
     headless: false                 # debug overlay window; set true for background/server deployment
+
+# --------------------------------------------------------------------- #
+# Phase 5: bridge_api backend
+# --------------------------------------------------------------------- #
+# Secrets (ADMIN_USERNAME, ADMIN_PASSWORD_HASH, JWT_SECRET) are NOT here --
+# they're read from environment variables in api/auth.py. This section is
+# only non-sensitive tunables.
+api:
+  host: "0.0.0.0"
+  port: 8080
+  frontend_url: "http://localhost:5173"   # locks down CORS -- see api/main.py. Must match
+                                            # frontend/package.json's "dev" script, which now
+                                            # pins Vite to this exact port via --port --strictPort
+                                            # (fails loudly instead of silently drifting to a
+                                            # different port when 5173 is taken).
+  access_token_expire_minutes: 480         # 8h login session
+  max_failed_logins: 5                     # per-username lockout threshold
+  login_lockout_seconds: 60.0
+  default_page_size: 50
+  max_page_size: 200

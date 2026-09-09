@@ -9,6 +9,7 @@ HTTP calls to the emotion/pose services).
 import cv2
 import base64
 import numpy as np
+from typing import Optional
 
 
 def crop_with_padding(frame: np.ndarray, x1: int, y1: int, x2: int, y2: int, pad: float = 0.1) -> np.ndarray:
@@ -46,5 +47,16 @@ def encode_image_b64(image: np.ndarray, quality: int = 90) -> str:
     if not success:
         return ""
     return base64.b64encode(buf.tobytes()).decode('utf-8')
+
+
+def encode_image_bytes(image: np.ndarray, quality: int = 90) -> Optional[bytes]:
+    """JPEG-encode to raw bytes (no base64 layer) -- for storing directly
+    in a BLOB column, e.g. pending_identity_candidates.image_jpeg."""
+    if image is None or image.size == 0:
+        return None
+    success, buf = cv2.imencode('.jpg', image, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+    if not success:
+        return None
+    return buf.tobytes()
 
 

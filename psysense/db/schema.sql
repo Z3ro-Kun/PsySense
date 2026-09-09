@@ -110,3 +110,62 @@ CREATE TABLE IF NOT EXISTS system_logs (
     context_json    TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_logs_time ON system_logs(timestamp);
+
+-- Human-in-the-loop identity auto-update: when resolve() gets a
+-- very-high-confidence match (a stricter bar than normal matching --
+-- see identity.auto_update.distance_threshold in config.yaml), the raw
+-- face crop + candidate embedding are held here for an admin to actually
+-- look at and confirm before it's added to anyone's profile -- never
+-- silently. No status column: a row here means "pending" by definition;
+-- approve/reject always DELETE the row immediately (approve copies the
+-- vector into face_embeddings first) so a rejected image leaves nothing
+-- behind, and no query can ever reveal "candidates rejected for student X".
+-- image_jpeg exists ONLY for this review step -- unlike every other table
+-- in this schema, it holds raw biometric image data, which is exactly why
+-- rows here are always short-lived (reviewed promptly, or expired by
+-- identity.auto_update.pending_retention_days regardless of review).
+CREATE TABLE IF NOT EXISTS pending_identity_candidates (
+    candidate_id      TEXT PRIMARY KEY,
+    student_id        TEXT NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+    tracker_id        INTEGER,
+    session_id        TEXT REFERENCES tracking_sessions(session_id) ON DELETE SET NULL,
+    image_jpeg        BLOB NOT NULL,
+    vector            BLOB NOT NULL,
+    dim               INTEGER NOT NULL,
+    distance          REAL NOT NULL,
+    blur_score        REAL,
+    brightness        REAL,
+    yaw_deg           REAL,
+    occlusion_score   REAL,
+    face_size_px      INTEGER,
+    captured_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pending_candidates_student ON pending_identity_candidates(student_id);
+CREATE INDEX IF NOT EXISTS idx_pending_candidates_captured ON pending_identity_candidates(captured_at);
+
+-- Sub-admin accounts (reviewers). The single root admin from
+-- ADMIN_USERNAME/ADMIN_PASSWORD_HASH (api/auth.py) is NOT a row here --
+-- it's a break-glass account that keeps working even if this table is
+-- empty or the database is wiped. Rows here are created by that root
+-- admin (or another admin row) via POST /api/v1/users; role is currently
+-- 'admin' or 'reviewer' -- see api/auth.py for how each is authorized.
+CREATE TABLE IF NOT EXISTS users (
+    user_id         TEXT PRIMARY KEY,
+    username        TEXT NOT NULL UNIQUE,
+    password_hash   TEXT NOT NULL,
+    role            TEXT NOT NULL DEFAULT 'reviewer',   -- 'admin' | 'reviewer'
+    active          INTEGER NOT NULL DEFAULT 1,
+    created_at      TEXT NOT NULL
+);
+
+-- A reviewer only ever sees/approves/rejects identity candidates for
+-- students they're explicitly assigned to -- there is no "see everyone"
+-- reviewer mode. Many-to-many: a reviewer can be assigned several
+-- students, and (e.g. co-teachers) a student can have several reviewers.
+CREATE TABLE IF NOT EXISTS reviewer_assignments (
+    user_id         TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    student_id      TEXT NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+    assigned_at     TEXT NOT NULL,
+    PRIMARY KEY (user_id, student_id)
+);
+CREATE INDEX IF NOT EXISTS idx_reviewer_assignments_student ON reviewer_assignments(student_id);

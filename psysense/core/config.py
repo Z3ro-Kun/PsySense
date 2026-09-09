@@ -50,12 +50,28 @@ class VectorIndexConfig(BaseModel):
     persist_path: str = "data/faiss_index/students.index"
 
 
+class AutoUpdateConfig(BaseModel):
+    """Human-in-the-loop profile enrichment: resolve() queues a candidate
+    for admin review instead of ever adding an embedding to a profile
+    silently. distance_threshold is deliberately much stricter than
+    matching.match_distance_threshold -- this only ever fires on matches
+    already extremely confident, specifically so a human reviewer is
+    confirming a near-certain case, not adjudicating a borderline one."""
+
+    enabled: bool = True
+    distance_threshold: float = 0.20
+    min_seconds_between_candidates_per_student: float = 3600.0
+    pending_retention_days: float = 7.0
+    cleanup_interval_sec: float = 3600.0
+
+
 class IdentityConfig(BaseModel):
     embedder: EmbedderConfig = EmbedderConfig()
     quality: QualityConfig = QualityConfig()
     matching: MatchingConfig = MatchingConfig()
     cache: IdentityCacheConfig = IdentityCacheConfig()
     vector_index: VectorIndexConfig = VectorIndexConfig()
+    auto_update: AutoUpdateConfig = AutoUpdateConfig()
 
 
 class CameraConfig(BaseModel):
@@ -97,6 +113,7 @@ class FrequenciesConfig(BaseModel):
     fusion_flush_interval_sec: float = 10.0
     cache_sweep_interval_sec: float = 5.0
     pose_history_cleanup_interval_sec: float = 60.0
+    identity_refresh_interval_sec: float = 30.0
 
 
 class ServicesConfig(BaseModel):
@@ -123,9 +140,32 @@ class PipelineConfig(BaseModel):
     display: DisplayConfig = DisplayConfig()
 
 
+class ApiConfig(BaseModel):
+    """Config for bridge_api. Deliberately holds no secrets -- host/port/CORS
+    origin are non-sensitive tunables that belong in config.yaml like
+    everything else; ADMIN_USERNAME/ADMIN_PASSWORD_HASH/JWT_SECRET are
+    read directly from the environment in api/auth.py instead (see its
+    docstring for why)."""
+
+    host: str = "0.0.0.0"
+    port: int = 8080
+    frontend_url: str = "http://localhost:5173"
+    access_token_expire_minutes: int = 480
+    max_failed_logins: int = 5
+    login_lockout_seconds: float = 60.0
+    default_page_size: int = 50
+    max_page_size: int = 200
+
+
+class LoggingConfig(BaseModel):
+    level: str = "INFO"  # DEBUG surfaces per-frame identity-resolution diagnostics (quality/distance) -- see manager.py
+
+
 class AppConfig(BaseModel):
     identity: IdentityConfig = IdentityConfig()
     pipeline: PipelineConfig = PipelineConfig()
+    api: ApiConfig = ApiConfig()
+    logging: LoggingConfig = LoggingConfig()
 
 
 def load_config(path: Optional[str] = None) -> AppConfig:
@@ -138,4 +178,24 @@ def load_config(path: Optional[str] = None) -> AppConfig:
         )
     with open(config_path, "r", encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
-    return AppConfig(**raw)
+    config = AppConfig(**raw)
+
+    # database.path and vector_index.persist_path are given as relative
+    # strings in config.yaml, but main.py and bridge_api are legitimately
+    # launched from different working directories (see README) -- a
+    # relative path resolved against "whatever the CWD happens to be"
+    # means two processes can silently end up reading/writing two
+    # DIFFERENT database files with no error, no warning, just data that
+    # mysteriously never shows up where you expect it. Anchor both to the
+    # psysense package root (this file's parent's parent) so the same
+    # file is always used no matter which directory a process starts in.
+    psysense_root = Path(__file__).resolve().parents[1]
+    config.pipeline.database.path = _anchor(config.pipeline.database.path, psysense_root)
+    config.identity.vector_index.persist_path = _anchor(config.identity.vector_index.persist_path, psysense_root)
+
+    return config
+
+
+def _anchor(path_str: str, base: Path) -> str:
+    p = Path(path_str)
+    return str(p if p.is_absolute() else (base / p))

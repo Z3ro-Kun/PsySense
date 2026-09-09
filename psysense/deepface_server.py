@@ -48,12 +48,20 @@ def normalize_emotions(raw: dict) -> dict:
 
 
 def _analyze_sync(frame: np.ndarray) -> dict:
-    """The actual blocking DeepFace call, run off the event loop thread."""
+    """The actual blocking DeepFace call, run off the event loop thread.
+
+    detector_backend="skip": the frame arriving here is already a
+    person-crop from main.py's YOLO detection, so re-running a second
+    face detector inside DeepFace is redundant work -- and depends on
+    detector-specific assets (e.g. "opencv"'s bundled Haar cascade XML)
+    that aren't reliably present in every environment. "skip" tells
+    DeepFace to trust the crop and go straight to emotion classification.
+    """
     return DeepFace.analyze(
         frame,
         actions=["emotion"],
         enforce_detection=False,
-        detector_backend="opencv",
+        detector_backend="skip",
     )
 
 

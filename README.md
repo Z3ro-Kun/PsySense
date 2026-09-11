@@ -61,27 +61,38 @@ spins up the backend and frontend against a database seeded with realistic fake
 students and history:
 
 ```powershell
-# 1. Backend deps + admin account
+# 1. Backend deps
 cd psysense
 python -m venv main_env; main_env\Scripts\activate
 pip install -r ..\requirements.txt
-python -m scripts.create_admin              # copy the 3 printed lines into ..\.env
 
-# 2. Seed demo data (fake students, no real photos, no real ML model needed)
+# 2. Create your .env and an admin login (there is no .env yet -- only .env.example)
+copy ..\.env.example ..\.env
+python -m scripts.create_admin
+```
+
+`create_admin` prompts for a username and password, then prints three lines
+(`ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`, `JWT_SECRET`) — paste those into the
+`..\.env` file you just created, replacing the empty placeholders. This account
+is what you'll actually log into the dashboard with in step 5 below.
+
+```powershell
+# 3. Seed demo data (fake students, no real photos, no real ML model needed)
 python -m scripts.seed_demo_data
 
-# 3. Run the API
+# 4. Run the API
 python -m uvicorn api.asgi:app --reload
 
-# 4. In a second terminal: the dashboard
+# 5. In a second terminal: the dashboard
 cd ..\frontend
 npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`, sign in with the admin account you just created, and
-the dashboard is already populated. Running the *real* camera pipeline (identity/
-emotion/pose inference) is a separate, heavier setup — see [Setup](#setup).
+Open `http://localhost:5173`, sign in with the admin username/password you set in
+step 2, and the dashboard is already populated. Running the *real* camera
+pipeline (identity/emotion/pose inference) is a separate, heavier setup — see
+[Setup](#setup).
 
 ## Screenshots
 
@@ -303,24 +314,31 @@ npm install
 
 ## Running it
 
-Each of these is a separate process (separate venv where noted):
+Five separate processes, five separate terminals, each starting from the repo
+root — the venv must be **activated in that terminal** before its command will
+work (a bare `python psysense\...` in a terminal with the wrong/no venv active
+fails with `ModuleNotFoundError`, not a helpful error):
 
 ```powershell
-# deepface_env
+# Terminal 1 -- emotion service
+deepface_env\Scripts\activate
 python psysense\deepface_server.py
 
-# mediapipe_env
+# Terminal 2 -- pose service
+mediapipe_env\Scripts\activate
 python psysense\mediapipe_server.py
 
-# main_env -- camera pipeline
+# Terminal 3 -- camera pipeline
+main_env\Scripts\activate
 cd psysense
 python main.py
 
-# main_env -- backend API (.env loads automatically -- see api/asgi.py)
+# Terminal 4 -- backend API (.env loads automatically -- see api/asgi.py)
+main_env\Scripts\activate
 cd psysense
 python -m uvicorn api.asgi:app --host 0.0.0.0 --port 8080
 
-# frontend dev server
+# Terminal 5 -- frontend dev server (no venv -- this one's Node, not Python)
 cd frontend
 npm run dev
 ```

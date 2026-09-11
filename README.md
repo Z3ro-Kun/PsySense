@@ -6,12 +6,16 @@
 posture signals, fused over time and reviewed by a human before anything about a
 person's profile changes.
 
-![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688?logo=fastapi&logoColor=white)
-![React](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61DAFB?logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/typed-TypeScript-3178C6?logo=typescript&logoColor=white)
-![SQLite](https://img.shields.io/badge/storage-SQLite%20(WAL)-07405E?logo=sqlite&logoColor=white)
-![Tests](https://img.shields.io/badge/backend%20tests-65%20passing-2ea043)
+[![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](#setup)
+[![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688?logo=fastapi&logoColor=white)](psysense/api)
+[![React](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61DAFB?logo=react&logoColor=black)](frontend)
+[![TypeScript](https://img.shields.io/badge/typed-TypeScript-3178C6?logo=typescript&logoColor=white)](frontend/src)
+[![SQLite](https://img.shields.io/badge/storage-SQLite%20(WAL)-07405E?logo=sqlite&logoColor=white)](psysense/db)
+[![Tests](https://img.shields.io/badge/backend%20tests-65%20passing-2ea043)](psysense/tests)
+[![Last commit](https://img.shields.io/github/last-commit/Z3ro-Kun/PsySense)](https://github.com/Z3ro-Kun/PsySense/commits/master)
+[![License: unspecified](https://img.shields.io/badge/license-unspecified-lightgrey)](#)
+
+**[Live demo](#live-demo)** · **[Quick start](#quick-start)** · **[Screenshots](#screenshots)** · **[Architecture](#architecture)**
 
 </div>
 
@@ -27,8 +31,18 @@ to learn automatically before it's allowed to.
 This README describes the system **as it actually exists in this repository** —
 if anything here goes stale, the code is authoritative.
 
+## Live demo
+
+> Not deployed yet. Once you deploy your own copy (see [Deployment](#deployment)),
+> put the link here — a demo account works well for a portfolio link since visitors
+> can click straight into a populated dashboard instead of an empty one (see
+> `psysense/scripts/seed_demo_data.py`).
+
 ## Contents
 
+- [Live demo](#live-demo)
+- [Quick start](#quick-start)
+- [Screenshots](#screenshots)
 - [Highlights](#highlights)
 - [Architecture](#architecture)
 - [Repository layout](#repository-layout)
@@ -39,6 +53,85 @@ if anything here goes stale, the code is authoritative.
 - [Privacy & security posture](#privacy--security-posture)
 - [Known limitations / roadmap](#known-limitations--roadmap)
 - [Troubleshooting](#troubleshooting)
+
+## Quick start
+
+Want to just see the dashboard working, no camera or ML models required? This
+spins up the backend and frontend against a database seeded with realistic fake
+students and history:
+
+```powershell
+# 1. Backend deps + admin account
+cd psysense
+python -m venv main_env; main_env\Scripts\activate
+pip install -r ..\requirements.txt
+python -m scripts.create_admin              # copy the 3 printed lines into ..\.env
+
+# 2. Seed demo data (fake students, no real photos, no real ML model needed)
+python -m scripts.seed_demo_data
+
+# 3. Run the API
+python -m uvicorn api.asgi:app --reload
+
+# 4. In a second terminal: the dashboard
+cd ..\frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`, sign in with the admin account you just created, and
+the dashboard is already populated. Running the *real* camera pipeline (identity/
+emotion/pose inference) is a separate, heavier setup — see [Setup](#setup).
+
+## Screenshots
+
+<table>
+<tr>
+<td width="50%">
+
+**Dashboard** — recent behavior alerts and sessions at a glance
+<img src="docs/screenshots/dashboard.jpg" alt="Dashboard with recent behavior alerts and sessions">
+</td>
+<td width="50%">
+
+**Students** — search and manage enrolled profiles
+<img src="docs/screenshots/students.jpg" alt="Students list page">
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Emotion trend** — windowed, per-student, never a single-frame judgment
+<img src="docs/screenshots/student-detail-emotion.jpg" alt="Student detail page emotion trend chart">
+</td>
+<td width="50%">
+
+**Pose signals** — posture proxies over the same time window
+<img src="docs/screenshots/student-detail-pose.jpg" alt="Student detail page pose signals chart">
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Review queue** — a human confirms every auto-suggested profile update
+<img src="docs/screenshots/review-queue.jpg" alt="Identity candidate review queue">
+</td>
+<td width="50%">
+
+**Scoped reviewers** — sub-admins see only the students assigned to them
+<img src="docs/screenshots/reviewer-assignments.jpg" alt="Reviewer student assignment editor">
+</td>
+</tr>
+</table>
+
+<details>
+<summary>More screenshots (login, reviewer accounts list)</summary>
+<br>
+
+<img src="docs/screenshots/login.jpg" alt="Login page" width="49%">
+<img src="docs/screenshots/reviewers-list.jpg" alt="Reviewer accounts list" width="49%">
+
+</details>
 
 ## Highlights
 
@@ -117,7 +210,9 @@ psysense/
     tracking/                 ByteTrack/StrongSort wrapper
   api/                        bridge_api: FastAPI app, auth (JWT + roles), routers, schemas
     routers/                   auth, students, telemetry, identity-candidates, users
-  scripts/create_admin.py     generates ADMIN_PASSWORD_HASH/JWT_SECRET for .env
+  scripts/
+    create_admin.py            generates ADMIN_PASSWORD_HASH/JWT_SECRET for .env
+    seed_demo_data.py           populates fake students + history for demos/screenshots
   tests/                      pytest suite -- pipeline + full API, no real models required
   benchmarks/                 tracker A/B benchmark script
   config/config.yaml          all non-secret tunables
@@ -126,13 +221,16 @@ frontend/                    React + Vite + TypeScript dashboard
   src/auth/                    JWT + role session context, route guards
   src/components/               shared UI (charts, dropzone, layout, badges)
   src/pages/                    one file per route
+docs/screenshots/            images used in this README
 docker-compose.yml           bridge_api container definition
 requirements*.txt            per-service Python dependencies (see Setup)
 ```
 
 ## Setup
 
-### Python environments
+<details>
+<summary><strong>Python environments</strong></summary>
+<br>
 
 Three separate venvs, historically kept apart because their dependency chains
 conflict with each other:
@@ -154,7 +252,11 @@ pip install -r requirements.txt
 Python 3.10+ — InsightFace/FAISS wheel availability is the main constraint on
 very new Python versions.
 
-### Model files (not committed — see `.gitignore`)
+</details>
+
+<details>
+<summary><strong>Model files</strong> (not committed — see <code>.gitignore</code>)</summary>
+<br>
 
 - `yolov8n.pt` — YOLO person detector
 - `osnet_x0_25_msmt17.pt` / `.onnx` — StrongSort ReID weights (only needed if
@@ -165,7 +267,11 @@ very new Python versions.
 InsightFace's `buffalo_l` model pack downloads itself on first use of the
 identity subsystem — no manual step, but it needs network access the first time.
 
-### Configuration
+</details>
+
+<details>
+<summary><strong>Configuration</strong></summary>
+<br>
 
 - `psysense/config/config.yaml` — every non-secret tunable: ports, camera
   source, quality/matching thresholds, human-review auto-update thresholds,
@@ -182,12 +288,18 @@ identity subsystem — no manual step, but it needs network access the first tim
   "reviewer" accounts (scoped to specific students) are created afterward from
   the dashboard's Manage Reviewers page, not via environment variables.
 
-### Frontend
+</details>
+
+<details>
+<summary><strong>Frontend</strong></summary>
+<br>
 
 ```powershell
 cd frontend
 npm install
 ```
+
+</details>
 
 ## Running it
 
@@ -245,11 +357,55 @@ npm run build     # tsc -b && vite build -- this is also the type-check
 **bridge_api runs on the same machine as the camera pipeline**, reading the same
 SQLite file `main.py` writes. This was a deliberate choice over a separate cloud
 server with a sync process — it avoids inventing a second database and a sync
-engine for a single-deployment setup. Expose bridge_api to wherever the deployed
-frontend runs via a reverse proxy or tunnel rather than opening the port
-directly to the internet.
+engine for a single-deployment setup.
 
-### Backend (Docker)
+For a **portfolio demo** specifically (no camera, no real ML models, $0 hosting),
+see the collapsible guide below — it deploys the dashboard + API seeded with
+`seed_demo_data.py`'s fake students, which is the honest way to show this off
+publicly: the camera pipeline needs local hardware and can't run in the cloud
+for free, so a public deployment is inherently the dashboard/API layer, not a
+live feed.
+
+<details>
+<summary><strong>Free portfolio deployment (frontend on Vercel, backend on Render)</strong></summary>
+<br>
+
+1. **Backend → [Render](https://render.com)** (free web service tier — $0, no
+   card required; cold-starts after ~15 min idle, which is normal for a demo):
+   - New → Web Service → connect this GitHub repo.
+   - Root directory: `psysense`. Dockerfile path: `Dockerfile.api`.
+   - Add environment variables: `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`,
+     `JWT_SECRET` (from `python -m scripts.create_admin`, run locally first).
+   - Free tier disk is ephemeral (wiped on redeploy) — that's fine for a demo;
+     add a start-up seed step (Render's "Start Command" or a
+     `postdeploy`/entrypoint hook) that runs
+     `python -m scripts.seed_demo_data` before `uvicorn`, so a fresh deploy is
+     never empty.
+   - Note the resulting URL, e.g. `https://psysense-api.onrender.com`.
+
+2. **Frontend → [Vercel](https://vercel.com)** (free hobby tier — $0):
+   - Import this repo, set the project root to `frontend`.
+   - Environment variable: `VITE_API_URL` = your Render URL from step 1.
+   - Before deploying, edit `psysense/config/config.yaml`'s `api.frontend_url`
+     to your Vercel URL (e.g. `https://psysense.vercel.app`) and push — CORS is
+     locked to exactly that origin, so the backend needs to know it in advance.
+
+3. Visit your Vercel URL, log in with the admin account from step 1. The
+   dashboard is now permanently live at $0/month, seeded with demo data.
+
+**If you want to show the real pipeline working** (not just the dashboard) for
+a live interview/demo instead of a permanent link: run `main.py` +
+`deepface_server.py` + `mediapipe_server.py` locally with your own camera, and
+temporarily expose local `bridge_api` with a free tunnel
+([Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+or [ngrok](https://ngrok.com)) pointed at your deployed frontend's CORS origin.
+This can't be a permanent free deployment — it fundamentally needs a camera.
+
+</details>
+
+<details>
+<summary><strong>Backend via Docker (self-hosted)</strong></summary>
+<br>
 
 ```powershell
 docker compose build bridge_api
@@ -261,17 +417,23 @@ repo root. The pipeline and inference servers are **not** containerized (camera
 device access and the three conflicting venvs don't map cleanly onto compose
 services) — run those directly on the host.
 
-### Frontend
+</details>
+
+<details>
+<summary><strong>Frontend, any static host</strong></summary>
+<br>
 
 ```powershell
 cd frontend
 npm run build
 ```
 
-Deploy the `dist/` output to Vercel/Netlify (both auto-detect a Vite build) or
-any static host. Set `VITE_API_URL` to wherever bridge_api is reachable, and
-`config.yaml`'s `api.frontend_url` to the deployed frontend's exact origin —
-CORS is locked to that one origin, never `*`.
+Deploy the `dist/` output to Vercel/Netlify/GitHub Pages (all auto-detect or
+easily configure a Vite build) or any static host. Set `VITE_API_URL` to
+wherever bridge_api is reachable, and `config.yaml`'s `api.frontend_url` to the
+deployed frontend's exact origin — CORS is locked to that one origin, never `*`.
+
+</details>
 
 ## Privacy & security posture
 
@@ -309,6 +471,10 @@ CORS is locked to that one origin, never `*`.
 
 ## Troubleshooting
 
+<details>
+<summary>Expand common issues</summary>
+<br>
+
 - **"config.yaml not found"** — `core/config.py` fails loudly by design; create
   `psysense/config/config.yaml` (copy the one in this repo) rather than relying
   on hardcoded defaults.
@@ -334,3 +500,5 @@ CORS is locked to that one origin, never `*`.
   `config.yaml` temporarily; `main.py` will then log the exact quality-gate
   reason or match distance for every resolution attempt instead of a bare
   "unknown".
+
+</details>

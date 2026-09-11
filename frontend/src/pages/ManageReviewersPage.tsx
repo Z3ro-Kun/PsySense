@@ -176,7 +176,14 @@ function ReviewerAssignmentEditor({ userId }: { userId: string }) {
         setAssignedStudents((s) => s.filter((x) => x.student_id !== student.student_id));
       } else {
         next.add(student.student_id);
-        setAssignedStudents((s) => [...s, student]);
+        // Idempotent on purpose: two toggle() calls for the same student
+        // in quick succession (e.g. a fast double-click, or two clicks
+        // landing on the same row before React re-renders in between)
+        // must not add a second chip -- assignedIds (a Set) already
+        // de-dupes correctly via functional updates, but this array push
+        // didn't check membership before, so it could drift out of sync
+        // with the Set and show a duplicate.
+        setAssignedStudents((s) => (s.some((x) => x.student_id === student.student_id) ? s : [...s, student]));
       }
       return next;
     });

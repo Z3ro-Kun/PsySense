@@ -445,26 +445,32 @@ class Repository:
     # Events
     # ------------------------------------------------------------------ #
 
-    def insert_emotion_event(self, session_id: Optional[str], student_id: Optional[UUID], emotions: dict[str, float]) -> None:
+    def insert_emotion_event(
+        self, session_id: Optional[str], student_id: Optional[UUID], emotions: dict[str, float],
+        timestamp: Optional[datetime] = None,
+    ) -> None:
         dominant = max(emotions, key=emotions.get) if emotions else None
+        ts = timestamp.strftime("%Y-%m-%dT%H:%M:%S") if timestamp else now_iso()
         self._writer.enqueue(
             """
             INSERT INTO emotion_events (session_id, student_id, timestamp, emotions_json, dominant_emotion)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (session_id, str(student_id) if student_id else None, now_iso(), dumps(emotions), dominant),
+            (session_id, str(student_id) if student_id else None, ts, dumps(emotions), dominant),
         )
 
     def insert_pose_event(
         self, session_id: Optional[str], student_id: Optional[UUID],
         slumped: float, rigidity: float, fidgeting: float,
+        timestamp: Optional[datetime] = None,
     ) -> None:
+        ts = timestamp.strftime("%Y-%m-%dT%H:%M:%S") if timestamp else now_iso()
         self._writer.enqueue(
             """
             INSERT INTO pose_events (session_id, student_id, timestamp, slumped_score, rigidity_score, fidgeting_score)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (session_id, str(student_id) if student_id else None, now_iso(), slumped, rigidity, fidgeting),
+            (session_id, str(student_id) if student_id else None, ts, slumped, rigidity, fidgeting),
         )
 
     def insert_behavior_event(
